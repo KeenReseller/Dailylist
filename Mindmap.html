@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Tab-Indented Mindmap</title>
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+        background: #1e1e1e;
+        color: white;
+    }
+
+    #inputBox {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        width: 350px;
+        height: 95vh;
+        background: #2b2b2b;
+        border: 1px solid #444;
+        padding: 10px;
+        resize: none;
+        color: white;
+        font-size: 14px;
+        z-index: 10;
+    }
+
+    #generateBtn {
+        position: fixed;
+        top: 10px;
+        left: 370px;
+        background: #4caf50;
+        padding: 10px 20px;
+        border: none;
+        color: white;
+        cursor: pointer;
+        z-index: 10;
+        border-radius: 5px;
+    }
+
+    #canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+</style>
+</head>
+
+<body>
+
+<textarea id="inputBox" placeholder="Paste your tab-indented outline here..."></textarea>
+<button id="generateBtn">Generate Mindmap</button>
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let offsetX = 0, offsetY = 0;
+let isDragging = false;
+let lastX, lastY;
+
+// Drag to scroll
+canvas.addEventListener("mousedown", e => {
+    isDragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+});
+canvas.addEventListener("mouseup", () => isDragging = false);
+canvas.addEventListener("mousemove", e => {
+    if (isDragging) {
+        offsetX += e.clientX - lastX;
+        offsetY += e.clientY - lastY;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        drawMindmap();
+    }
+});
+
+// Parse TAB-indented text into a tree
+function parseText(text) {
+    const lines = text.split("\n");
+    let root = { text: "ROOT", level: -1, children: [] };
+    let stack = [root];
+
+    for (let line of lines) {
+        if (!line.trim()) continue;
+
+        let level = line.match(/^\t*/)[0].length;
+        let node = { text: line.trim(), level, children: [] };
+
+        while (stack[stack.length - 1].level >= level) {
+            stack.pop();
+        }
+
+        stack[stack.length - 1].children.push(node);
+        stack.push(node);
+    }
+
+    return root;
+}
+
+// Auto colors per depth
+const colors = [
+    "#FFC300", "#FF5733", "#C70039",
+    "#900C3F", "#581845", "#1ABC9C",
+    "#3498DB", "#9B59B6", "#E67E22"
+];
+
+// Draw the mindmap nodes
+function drawNode(node, x, y, depth) {
+    let color = colors[depth % colors.length];
+
+    ctx.fillStyle = color;
+    ctx.strokeStyle = "white";
+
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.rect(x, y, node.text.length * 10 + 20, 30);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "black";
+    ctx.fillText(node.text, x + 10, y + 20);
+
+    let childY = y;
+    for (let child of node.children) {
+        childY += 60;
+        ctx.beginPath();
+        ctx.moveTo(x + (node.text.length * 10 + 20) / 2, y + 30);
+        ctx.lineTo(x + 200, childY + 15);
+        ctx.strokeStyle = "white";
+        ctx.stroke();
+
+        drawNode(child, x + 200, childY, depth + 1);
+    }
+}
+
+let tree;
+function drawMindmap() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (tree) drawNode(tree, offsetX + 50, offsetY + 50, 0);
+}
+
+document.getElementById("generateBtn").onclick = () => {
+    const text = document.getElementById("inputBox").value;
+    tree = parseText(text);
+    drawMindmap();
+};
+</script>
+</body>
+</html>
